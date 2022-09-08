@@ -297,14 +297,24 @@ namespace VSBugTracker
                 throw ex;
             }
         }
-        public int AssignRight(int[] accountIDs, int right)
+        public int AssignRight(int[] accountIDs, int type, int right)
         {
             try
             {
                 if (accountIDs?.Length > 0)
                 {
-                    string query = "update TAccount set AccountRight = " + right + " where AccountID in (" + string.Join(", ", accountIDs) + ")";
-                    return ExecuteNonQuery(query);
+                    List<string> updateStatements = new List<string>();
+                    if (type > 0)
+                    {
+                        updateStatements.Add(string.Format("AccountType = {0}", type));
+                    }
+                    updateStatements.Add(string.Format("AccountRight = {0}", right));
+
+                    if (updateStatements.Count > 0)
+                    {
+                        string query = string.Format("update TAccount set {0} where AccountID in ({1})", string.Join(", ", updateStatements), string.Join(", ", accountIDs));
+                        return ExecuteNonQuery(query);
+                    }
                 }
                 return 0;
             }
@@ -318,9 +328,35 @@ namespace VSBugTracker
         {
             try
             {
-                string query = string.Format("update TAccount set AccountLogin = '{0}', AccountName = '{1}', EncryptedPassword = '{2}', AccountType = {3}, AccountRight = {4} where AccountID = {5}",
-                    account.AccountLogin, account.AccountName, account.EncryptedPassword, account.AccountType, account.AccountRight, account.AccountID);
-                return ExecuteNonQuery(query);
+                List<string> updateStatements = new List<string>();
+                if(!string.IsNullOrWhiteSpace(account.AccountLogin))
+                {
+                    updateStatements.Add(string.Format("AccountLogin = '{0}'", account.AccountLogin));
+                }
+                if (!string.IsNullOrWhiteSpace(account.AccountName))
+                {
+                    updateStatements.Add(string.Format("AccountName = '{0}'", account.AccountName));
+                }
+                if (!string.IsNullOrWhiteSpace(account.EncryptedPassword))
+                {
+                    updateStatements.Add(string.Format("EncryptedPassword = '{0}'", account.EncryptedPassword));
+                }
+                if (account.AccountType > 0)
+                {
+                    updateStatements.Add(string.Format("AccountType = {0}", account.AccountType));
+                }
+                updateStatements.Add(string.Format("AccountRight = {0}", account.AccountRight));
+
+                if(updateStatements.Count > 0)
+                {
+                    string query = string.Format("update TAccount set {0} where AccountID = {1}", string.Join(", ", updateStatements), account.AccountID);
+                    return ExecuteNonQuery(query);
+                }
+
+                //string query = string.Format("update TAccount set AccountLogin = '{0}', AccountName = '{1}', EncryptedPassword = '{2}', AccountType = {3}, AccountRight = {4} where AccountID = {5}",
+                //    account.AccountLogin, account.AccountName, account.EncryptedPassword, account.AccountType, account.AccountRight, account.AccountID);
+                //return ExecuteNonQuery(query);
+                return 0;
             }
             catch (Exception ex)
             {
@@ -360,6 +396,19 @@ namespace VSBugTracker
             try
             {
                 string query = string.Format("select * from TAccount where AccountLogin = '{0}' and EncryptedPassword = '{1}' limit 1", loginName, encryptedPassword);
+                var accounts = ExecuteReader<TAccountADO>(query);
+                return accounts == null ? null : accounts.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+        public TAccountADO GetAccountByID(int id)
+        {
+            try
+            {
+                string query = string.Format("select * from TAccount where AccountID = {0} limit 1", id);
                 var accounts = ExecuteReader<TAccountADO>(query);
                 return accounts == null ? null : accounts.FirstOrDefault();
             }
